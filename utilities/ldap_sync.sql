@@ -1,5 +1,8 @@
-/* 
-The below scripts will help you synchronize database users with LDAP users. The script will search for roles that contain 
+/*
+======================================
+---------      Overview     ----------
+======================================
+The below scripts will help you synchronize database users with LDAP users. This solution will search for roles that contain 
 a distinguished name as a role comment and will then pull the members of this group from LDAP, create the necessary users, 
 and grant permissions. When users are removed from the group in LDAP, the users will also have the role revoked from them
 
@@ -52,7 +55,7 @@ About:  These are suggestions to ease implementation of the LDAP Sync process.
    ensuring the proper results, then plan to implement the secured LDAP setup. 
    It's much easier to implement in smaller tasks, than to try an implement the ideal setup all at once.
    
-6) Compile this script, and "GET_AD_ATTRIBUTES" incorporating the information you compiled. 
+6) Build these scripts after you have made your changes, such as the name of the CONNECTION and which SCHEMA to use. 
    This will ensure core functionality is implemented. To assist with verifying LDAP connections
    and general troubleshooting, compile "LDAP_HELPER" using the information you compiled. Specifically,
    build your CONNECTION using the "CREATE CONNECTION" SQL command and set up the SQL to call
@@ -149,24 +152,31 @@ Changes in this version:
 */
 
 
+--====================================
+------- Start taking Action   --------
+--====================================
 
+/* Set your schema first!  Uncomment and update the next line with the desired schema*/
+--
+--create schema if not exists EXA_TOOLBOX;
+--
 
-/* Set your schema first!  Uncommnt and update the next line with the desired schema*/
-create schema if not exists EXA_TOOLBOX;
+/*You will need a CONECTION pointing to the LDAP Server and port. Uncomment and update the next line 
+  with the desired connection name. Be sure and change ALL occurrances of "test_ldap_web" 
+  to <Your_CONNECTION_Name>. Example of valid LDAP connection: */
+--
+--create or replace connection test_ldap_web to 'ldap://192.168.1.155:389' user 'cn=admin,dc=manhlab,dc=com' identified by 'abc';
+--
 
-/*You will need a CONECTION pointing to the LDAP Server and port. 
-  Example of valid LDAP connection:
-  create or replace connection test_ldap_server to 'ldap://192.168.1.155:389' user 'cn=admin,dc=manhlab,dc=com' identified by 'abc';
-*/
-
--------------------------------------------------------------------------------------
+--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 --This script will search for the specified attribute on the given distinguished name
--------------------------------------------------------------------------------------
+--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 --/
 --===========================================================================================================================================================================
 CREATE OR REPLACE PYTHON3 SCALAR SCRIPT "GET_AD_ATTRIBUTE" ("LDAP_CONNECTION" VARCHAR(2000),"SEARCH_STRING" VARCHAR(2000) UTF8, "ATTR"  VARCHAR(1000),  "VERIFY" VARCHAR(10))
 EMITS ("SEARCH_STRING" VARCHAR(2000) UTF8, "ATTR" VARCHAR(1000), "VAL" VARCHAR(1000) UTF8) AS
---===========================================================================================================================================================================
+#============================================================================================================================================================================
 '''
 ###############################################
 --------------- General READ ME  --------------
@@ -505,17 +515,18 @@ def run(ctx):
 
 /
 
--------------------------------------------------------------------------------------
+--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 -- This script will help you explore ldap attributes. This is helpful when you do not know which attributes contain the role members or the username
 -- To find out which attributes contain the group members, you can run this: select EXA_TOOLBOX.LDAP_HELPER('LDAP_SERVER', ROLE_COMMENT) from exa_Dba_roles where role_name = <role name>
 -- To find out which attributes contain the username, you can run this: select EXA_TOOLBOX.LDAP_HELPER('LDAP_SERVER', user_name) from exa_dba_connections WHERE connection_name = 'LDAP_SERVER'; 
 -- For other purposes, you can run the script using the LDAP connection you created and the distinguished name of the object you want to investigate: SELECT EXA_TOOLBOX.LDAP_HELPER(<LDAP connection>,<distinguished name>);
--------------------------------------------------------------------------------------
+--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 --/
 --=======================================================================================================================
 CREATE OR REPLACE PYTHON3 SCALAR SCRIPT "LDAP_HELPER" ("LDAP_CONNECTION" VARCHAR(2000),"SEARCH_STRING" VARCHAR(2000) UTF8) 
 EMITS ("SEARCH_STRING" VARCHAR(2000) UTF8, "ATTR" VARCHAR(1000), "VAL" VARCHAR(1000) UTF8)  AS
---=======================================================================================================================
+#========================================================================================================================
 '''
 ###############################################
 #--------- NOTES for LDAP_HELER --------------#
@@ -762,12 +773,14 @@ def run(ctx):
 
 /
 
-
+--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 -- This script will perform the synchronizations
+--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 --/
---====================================
+--============================================================================================================================================================================
 CREATE OR REPLACE LUA SCRIPT "SYNC_AD_GROUPS_TO_DB_ROLES_AND_USERS" (LDAP_CONNECTION, GROUP_ATTRIBUTE, USER_ATTRIBUTE, EXECUTION_MODE, OPT_SEND_EMAIL, OPT_WRITE_AUDIT) RETURNS TABLE AS
---====================================
+--============================================================================================================================================================================
 /*--------------------------------------
 -- NOTES for Usage
 ---------------------------------------
@@ -1160,7 +1173,7 @@ to "ON".
 --/
 --========================================================================================================
 CREATE OR REPLACE PYTHON SCALAR SCRIPT MAIL_MAN (summary varchar(200000)) emits (message varchar(1000)) AS
---========================================================================================================
+#=========================================================================================================
 import smtplib
 from email.mime.text import MIMEText
 import datetime as dt
